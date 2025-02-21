@@ -2,11 +2,15 @@ version: '3.8'
 
 services:
   app:
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
+      - "5678:5678"  # For remote debugging if needed
     volumes:
       - .:/app
+      - ./app:/app/app  # Explicit mount for hot reloading
     environment:
       - MYSQL_HOST=db
       - MYSQL_USER=hetu
@@ -14,10 +18,12 @@ services:
       - MYSQL_DATABASE=hetudb
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - PYTHONDONTWRITEBYTECODE=1  # Prevents Python from writing .pyc files
+      - PYTHONUNBUFFERED=1  # Prevents Python from buffering stdout and stderr
     depends_on:
       - db
       - redis
-    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/app/app", "--proxy-headers"]
 
   db:
     image: mysql:8.0
@@ -29,7 +35,7 @@ services:
       - MYSQL_PASSWORD=hetu123
       - MYSQL_ROOT_PASSWORD=root123
     volumes:
-      - mysql_data:/var/lib/mysql
+      - mysql_dev_data:/var/lib/mysql
     command: --default-authentication-plugin=mysql_native_password
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "hetu", "--password=hetu123"]
@@ -43,8 +49,8 @@ services:
     ports:
       - "6380:6379"
     volumes:
-      - redis_data:/data
+      - redis_dev_data:/data
 
 volumes:
-  mysql_data:
-  redis_data:
+  mysql_dev_data:  # Separate volume for development data
+  redis_dev_data:  # Separate volume for development data
